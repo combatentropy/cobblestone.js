@@ -6,6 +6,7 @@
 // settings
 //
 
+const templateSelector = 'script[type="text/x-cob"]';
 const funcCommentStart = '\n/* * * begin function augmentation * * */\n';
 const funcCommentEnd = '\n/* * * end function augmentation * * */\n';
 const patterns = {
@@ -22,7 +23,7 @@ const dataKeys = {};
 const getters = {};
 const proxyMap = new Map();
 const regExps = {};
-
+const templates = [];
 
 // Build up all patterns from the basic ones, above
 patterns.funcAug = escRegExp(funcCommentStart) + '.+?' + escRegExp(funcCommentEnd);
@@ -1256,39 +1257,81 @@ function makeProxy(obj, prefix) {
     return proxy;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const templateElements = document.querySelectorAll('script[type="text/x-cob"]');
+const dataKeyObserverConfig = { attributes: true };
+const dataKeyObserver = new MutationObserver((mutations, observer) => {
+    for (const mutation of mutations) {
+        if ('data-key' === mutation.attributeName) {
 
-    for (const templateElement of templateElements) {
+            let template;
 
-        const dataKey = templateElement.dataset.key;
+            for (let t of templates) {
+                if (mutation.target === t.element) {
+                    template = t;
+                }
+            }
 
-        let dataVal;
-
-        if (dataKey in dataKeys) {
-            dataVal = dataKeys[ dataKey ];
-        } else {
-            dataVal = getValueByPath(window, dataKey),
-            dataVal = makeProxy(dataVal, dataKey);
-            dataKeys[dataKey] = dataVal;
-            setValueByPath(window, dataKey, dataVal);
+            renderTemplate(template);
         }
+    }
+});
 
-        let templateText = templateElement.innerHTML;
-        templateText = splitElifBlocks(templateText);
+function setUpTemplate(template) {
 
-        const env = {
-            dataKey: dataKey,
-            dataVal: dataVal,
-            aliases: []
-        };
+    let content = template.innerHTML;
+    content = splitElifBlocks(content);
 
-        const templateFunc = templateToFunction(templateText, env),
-              html = templateFunc(),
-              frag = htmlToFrag(html);
+    const comment = document.createComment('{/template}');
+    template.after(comment);
 
-        Masonry.scan(frag.firstChild, frag.lastChild, env);
-        templateElement.after(frag);
+    template = {
+        element: template,
+        content: content,
+        comment: comment
+    };
+
+    templates.push(template);
+    dataKeyObserver.observe(template.element, dataKeyObserverConfig);
+    renderTemplate(template);
+}
+
+function renderTemplate(template) {
+
+    deleteNodesBetween(template.element, template.comment);
+    const dataKey = template.element.dataset.key;
+
+    if (! dataKey) { return; }
+
+    const dataVal = getDataVal(dataKey),
+          env = {
+              dataKey: dataKey,
+              dataVal: dataVal,
+              aliases: []
+          },
+          templateFunc = templateToFunction(template.content, env),
+          html = templateFunc(),
+          frag = htmlToFrag(html);
+
+    Masonry.scan(frag.firstChild, frag.lastChild, env);
+    template.element.after(frag);
+}
+
+function getDataVal(dataKey) {
+    let dataVal = getValueByPath(window, dataKey);
+
+    // If value is unregistered or has changed
+    if (dataVal !== dataKeys[ dataKey ]) {
+        dataVal = makeProxy(dataVal, dataKey);
+        dataKeys[ dataKey ] = dataVal;
+        setValueByPath(window, dataKey, dataVal);
+    }
+
+    return dataVal;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const els = document.querySelectorAll(templateSelector);
+    for (const el of els) {
+        setUpTemplate(el);
     }
 });
 
