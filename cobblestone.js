@@ -1270,6 +1270,7 @@ const dataKeyObserver = new MutationObserver((mutations, observer) => {
                 }
             }
 
+            unrenderTemplate(template);
             renderTemplate(template);
         }
     }
@@ -1294,11 +1295,14 @@ function setUpTemplate(template) {
     renderTemplate(template);
 }
 
+function unrenderTemplate(template) {
+    deleteNodesBetween(template.element, template.comment);
+    Masonry.sweep();
+}
+
 function renderTemplate(template) {
 
-    deleteNodesBetween(template.element, template.comment);
     const dataKey = template.element.dataset.key;
-
     if (! dataKey) { return; }
 
     const dataVal = getDataVal(dataKey),
@@ -1330,9 +1334,7 @@ function getDataVal(dataKey) {
 
 document.addEventListener('DOMContentLoaded', () => {
     const els = document.querySelectorAll(templateSelector);
-    for (const el of els) {
-        setUpTemplate(el);
-    }
+    for (const el of els) { setUpTemplate(el); }
 });
 
 }
