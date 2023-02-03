@@ -1,5 +1,4 @@
 'use strict';
-
 {
 
 //
@@ -61,6 +60,9 @@ for (let key in patterns) {
     regExps[key] = new RegExp(val, flags);
 }
 
+// The number of parentheses in the regular expression for splitting blocks
+// determines the number of items in the returned array,
+// and therefore the interval between blocks, to jump through.
 const blockSplitInterval = 7;
 
 
@@ -181,7 +183,6 @@ function getFullPath(key, env) {
         }
     }
 
-
     path.push(lead);
 
     if ('dataKey' in env) { path.push(env.dataKey); }
@@ -208,7 +209,6 @@ function getDataSource(path) {
 
     return [ dataKey, dataVal ];
 }
-
 
 function deleteNodesBetween(firstNode, lastNode) {
     while (lastNode.previousSibling !== firstNode) {
@@ -710,7 +710,6 @@ const Masonry = {
         switch (mason.type) {
 
             case 'attr':
-
                 //  <!--{attr attr1=var1 attr2,attr3=var2}--><element...>
                 {
                     let assignments = content.slice(1);
@@ -750,12 +749,10 @@ const Masonry = {
                         this.add(attrMason);
                     }
                 }
-
                 break;
 
 
             case 'text':
-
                 //  <!--{text var}-->value<!--{/text}-->
                 {
                     mason.path = getFullPath(content[1], env);
@@ -787,16 +784,13 @@ const Masonry = {
                     mason.update(val);
                     this.add(mason);
                 }
-
                 break;
 
 
             case 'if':
-
                 //  <!--{if var
                 //  template
                 //  }-->
-
                 {
                     mason.firstNode = comment;
                     mason.path = getFullPath(content[1], env);
@@ -823,23 +817,19 @@ const Masonry = {
 
                     env.openBlocks.push(mason);
                 }
-
                 break;
 
 
             case '/if':
-
                 {
                     let mason = env.openBlocks.pop();
                     mason.lastNode = comment;
                     this.add(mason);
                 }
-
                 break;
 
 
             case 'each':
-
                 //  <!--{each array alias
                 //  template
                 //  }-->
@@ -853,12 +843,10 @@ const Masonry = {
                     env.openBlocks.push(mason);
                     env.openLoops.push(mason);
                 }
-
                 break;
 
 
             case '/each':
-
                 {
                     let mason = env.openBlocks.pop(),
                         loop = env.openLoops.pop(),
@@ -927,12 +915,10 @@ const Masonry = {
 
                     this.add(mason);
                 }
-
                 break;
 
 
             case 'item':
-
                 {
                     let loop = env.openLoops.at(-1);
                     if (! loop) { break; }
@@ -970,12 +956,10 @@ const Masonry = {
                     };
                     env.openBlocks.push(mason);
                 }
-
                 break;
 
 
             case '/item':
-
                 {
                     if (0 === env.openLoops.length) { break; }
                     env.aliases.pop();
@@ -984,7 +968,6 @@ const Masonry = {
                     mason.lastNode = comment;
                     this.add(mason);
                 }
-
                 break;
         }
     },
@@ -1336,5 +1319,4 @@ document.addEventListener('DOMContentLoaded', () => {
     const els = document.querySelectorAll(templateSelector);
     for (const el of els) { setUpTemplate(el); }
 });
-
 }
