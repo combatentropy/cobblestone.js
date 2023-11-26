@@ -476,6 +476,7 @@ function templateToFunction(template, env) {
         template[i] = section;
     }
 
+
     template = template.join('\n');
     let head = importAliases(env);
     template = '"use strict;"' + '\n\n' + head + '\n\n' + template;
@@ -656,6 +657,18 @@ function augmentInlineFunctions(element, env) {
 
 // The index of data keys to nodes in the body
 const Masonry = {
+
+    tasks: {
+        append: {
+            timer: null,
+            items: []
+        },
+        update: {
+            timer: null,
+            items: {}
+        },
+        sweep: null
+    },
 
     index: {},
 
@@ -909,8 +922,14 @@ const Masonry = {
                             openLoops: [ this ]
                         };
 
-                        Masonry.scan(frag.firstChild, frag.lastChild, subEnv);
+                        let firstNode = frag.firstChild,
+                            lastNode = frag.lastChild;
+
                         this.lastNode.before(frag);
+
+                        setTimeout(() => {
+                            Masonry.scan(firstNode, lastNode, subEnv);
+                        }, 25);
                     };
 
                     this.add(mason);
@@ -1013,6 +1032,8 @@ const Masonry = {
             if (0 === masons.length) { delete this.index[ path ]; }
             else { this.index[ path ] = masons; }
         }
+
+        this.tasks.sweep = null;
     },
 
     reindexLoop(path) {
@@ -1058,16 +1079,40 @@ const Masonry = {
     },
 
     append(key, val) {
-        const masons = this.get(key);
-        for (let mason of masons) { mason.append(val); }
+        this.tasks.append.items.push({ key: key, val: val });
+        if (null === this.tasks.append.timer) {
+            this.tasks.append.timer = setTimeout(() => {
+                console.time('append');
+                for (let item of Masonry.tasks.append.items) {
+                    const masons = this.get(item.key);
+                    for (let mason of masons) { mason.append(item.val); }
+                }
+                Masonry.tasks.append.items = [];
+                this.tasks.append.timer = null;
+                console.timeEnd('append');
+            }, 0);
+        }
     },
 
     update(key, val) {
-        const masons = this.get(key);
-        for (let mason of masons) {
-            if (mason.firstNode.isConnected) { mason.update(val); }
+        this.tasks.update.items[ key ] = val;
+        if (null === this.tasks.update.timer) {
+            this.tasks.update.timer = setTimeout(() => {
+                for (let key in Masonry.tasks.update.items) {
+                    let val = Masonry.tasks.update.items[ key ];
+                    const masons = this.get(key);
+                    for (let mason of masons) {
+                        mason.update(val);
+                    }
+                }
+                Masonry.tasks.update.items = {};
+                this.tasks.update.timer = null;
+                console.timeEnd('update');
+            }, 0);
         }
-        this.sweep();
+        if (null === this.tasks.sweep) {
+            this.tasks.sweep = setTimeout(() => { this.sweep() }, 0);
+        }
     }
 };
 
